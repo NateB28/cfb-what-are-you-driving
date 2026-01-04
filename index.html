@@ -201,7 +201,7 @@
     <div class="header">
       <div class="title">Based on your team’s last championship, what are you driving?</div>
       <div class="subtitle">
-        <b>More recent = better.</b> Longer ago = worse… and if you’ve never won, you’re <b>not driving</b>.
+        <b>More recent = better.</b> Longer ago = worse… and if it’s ancient enough, you might not be driving.
       </div>
     </div>
 
@@ -224,7 +224,7 @@
         </div>
 
         <div class="hint">
-          Champs get a vehicle based on how long ago they last won. Never-won teams get a transport method (walking/canoe/hitchhiking/etc.).
+          Champs get a car based on how long ago they last won (every 10 years it gets worse). If a team has never won (or it’s ancient enough), you get a transport method.
         </div>
 
         <div id="result" class="result">
@@ -236,7 +236,7 @@
               <div id="rTeam" class="v"></div>
             </div>
             <div class="kv">
-              <div class="k">Last national title season</div>
+              <div class="k">Last national title year</div>
               <div id="rYear" class="v"></div>
             </div>
             <div class="kv">
@@ -265,23 +265,30 @@
 
 <script>
 /* =========================================================
-   1) All FBS teams: loaded live from Wikipedia (stays current)
-   2) Last title year map: winners only; everyone else => never-won
-      (You can expand this list anytime.)
+   IMPORTANT FIX:
+   We now load the FBS list as structured objects:
+     { school, nickname, display }
+   Then we ONLY match championships by exact school name.
+   This eliminates the "phantom champ / Tesla bug" completely.
    ========================================================= */
 
-// Winners only. Everyone else automatically becomes "never won".
+const REFERENCE_YEAR = 2024;
+
+/* ---------- Last title year (school name -> year)
+   Note: This is a practical "major-title" list (modern + notable historic).
+   Anyone not listed is treated as "never won" for this game.
+   Add more schools/years anytime; the matching will stay correct.
+*/
 const LAST_TITLE_BY_SCHOOL = {
-  // Modern era highlights (includes historic winners you’ll recognize)
-  "Alabama": 2020,
-  "Clemson": 2018,
-  "Georgia": 2022,
-  "LSU": 2019,
-  "Michigan": 2023,
   "Ohio State": 2024,
+  "Michigan": 2023,
+  "Georgia": 2022,
+  "Alabama": 2020,
+  "LSU": 2019,
+  "Clemson": 2018,
   "Florida State": 2013,
-  "Florida": 2008,
   "Auburn": 2010,
+  "Florida": 2008,
   "Texas": 2005,
   "USC": 2004,
   "Miami (FL)": 2001,
@@ -295,19 +302,29 @@ const LAST_TITLE_BY_SCHOOL = {
   "Penn State": 1986,
   "BYU": 1984,
 
-  // Add more historic champs if you want them to get cars instead of “canoe”.
-  // Example:
-  // "Pittsburgh": 1976,
-  // "Army": 1946,
-  // "Minnesota": 1960
+  // Add some older legit champs so they don't get mislabeled as "never won"
+  "Pittsburgh": 1976,
+  "Michigan State": 1966,
+  "Arkansas": 1964,
+  "Minnesota": 1960,
+  "Syracuse": 1959,
+  "UCLA": 1954,
+  "Army": 1946,
+  "Texas A&M": 1939,
+  "TCU": 1938
 };
 
-const REFERENCE_YEAR = 2024; // keep it consistent with your “car model year = last champ year” idea
+/* ---------- Transport modes (never-won OR too old) */
+const TRANSPORT_MODES = [
+  { label:"walking 🚶", price:0, dot:"linear-gradient(135deg, rgba(255,84,112,.95), rgba(255,176,32,.75))" },
+  { label:"a bus pass 🚌", price:3, dot:"linear-gradient(135deg, rgba(255,176,32,.95), rgba(168,180,214,.55))" },
+  { label:"hitchhiking 👍", price:0, dot:"linear-gradient(135deg, rgba(168,180,214,.95), rgba(79,124,255,.55))" },
+  { label:"canoeing 🛶", price:250, dot:"linear-gradient(135deg, rgba(79,124,255,.95), rgba(124,77,255,.95))" },
+  { label:"a skateboard 🛹", price:110, dot:"linear-gradient(135deg, rgba(55,214,122,.60), rgba(79,124,255,.60))" },
+  { label:"a borrowed bicycle 🚲", price:0, dot:"linear-gradient(135deg, rgba(79,124,255,.55), rgba(168,180,214,.55))" }
+];
 
-/* =========================================================
-   Tiering: 10-year steps
-   Champs -> car tier; Never-won -> transport mode
-   ========================================================= */
+/* ---------- Car tiers (every 10 years worse) */
 const TIERS = [
   { name:"High Class", dot:"linear-gradient(135deg, rgba(55,214,122,.95), rgba(79,124,255,.95))",
     cars:["Mercedes-Benz G-Class","Porsche 911","Range Rover","BMW X5","Tesla Model S","Cadillac Escalade","Audi RS5","Lexus GX"]},
@@ -321,44 +338,49 @@ const TIERS = [
     cars:["a clunker that needs a jump","a ‘starts on the second try’ special","a car with one working window","a backseat full of tools","a mystery rattle machine","a tape-deck legend","a ‘my buddy can fix it’ ride","a permanent donut spare tire"]}
 ];
 
-const TRANSPORT_MODES = [
-  { label:"walking 🚶", price:0, dot:"linear-gradient(135deg, rgba(255,84,112,.95), rgba(255,176,32,.75))" },
-  { label:"a bus pass 🚌", price:2.50, dot:"linear-gradient(135deg, rgba(255,176,32,.95), rgba(168,180,214,.55))" },
-  { label:"hitchhiking 👍", price:0, dot:"linear-gradient(135deg, rgba(168,180,214,.95), rgba(79,124,255,.55))" },
-  { label:"canoeing 🛶", price:180, dot:"linear-gradient(135deg, rgba(79,124,255,.95), rgba(124,77,255,.95))" },
-  { label:"a skateboard 🛹", price:90, dot:"linear-gradient(135deg, rgba(55,214,122,.60), rgba(79,124,255,.60))" },
-  { label:"a borrowed bicycle 🚲", price:0, dot:"linear-gradient(135deg, rgba(79,124,255,.55), rgba(168,180,214,.55))" }
-];
-
 function rand(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
-function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
 function formatMoney(n){
   if (n === 0) return "$0";
   return n.toLocaleString("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});
 }
 function getAge(year){ return Math.max(0, REFERENCE_YEAR - year); }
-function tierIndexForYear(year){ return Math.min(4, Math.floor(getAge(year)/10)); }
 function buildCarText(year, picked){
   if (picked.startsWith("a ") || picked.startsWith("an ")) return picked;
   return `${year} ${picked}`;
 }
 
-/* =========================================================
-   Realistic-ish price model: depreciation curve
-   ========================================================= */
-const BASE_NEW_PRICE = 72000;        // anchor for modern nice ride
-const DEPRECIATION_PER_YEAR = 0.085; // 8.5% per year
-const MIN_CAR_PRICE = 800;
+/* ---------- Tiering rules:
+   0-9 years: High Class
+   10-19: Nice
+   20-29: Decent
+   30-39: Rough
+   40-54: Beater
+   55+: not driving (transport)
+*/
+function tierIndexForYear(year){
+  const age = getAge(year);
+  if (age < 10) return 0;
+  if (age < 20) return 1;
+  if (age < 30) return 2;
+  if (age < 40) return 3;
+  if (age < 55) return 4;
+  return -1; // transport
+}
+
+/* ---------- Realistic-ish depreciation curve (price today) */
+const BASE_NEW_PRICE = 70000;
+const DEPRECIATION_PER_YEAR = 0.09; // 9%/yr
+const MIN_CAR_PRICE = 900;
 
 function realisticPriceForYear(year, tierIdx){
   const age = getAge(year);
   let price = BASE_NEW_PRICE * Math.pow((1 - DEPRECIATION_PER_YEAR), age);
 
-  // Condition/tier multipliers
-  const tierMultiplier = [1.15, 1.00, 0.85, 0.65, 0.45][tierIdx] ?? 0.7;
+  // Tier multipliers (keeps newer > older while still "real-ish")
+  const tierMultiplier = [1.15, 1.00, 0.85, 0.65, 0.45][tierIdx] ?? 0.75;
   price *= tierMultiplier;
 
-  // Tiny variance ±6%
+  // Small variance ±6%
   const trim = 1 + ((Math.random()*0.12) - 0.06);
   price *= trim;
 
@@ -367,12 +389,12 @@ function realisticPriceForYear(year, tierIdx){
 
 /* =========================================================
    Load ALL FBS teams (School + Nickname) from Wikipedia API
+   We store structured objects so we don't have to guess the school name.
    ========================================================= */
 const statusLine = document.getElementById("statusLine");
-let ALL_TEAMS = []; // strings like "Miami (FL) Hurricanes"
+let ALL_TEAMS = []; // {school, nickname, display}
 
 async function loadFbsTeams(){
-  // Wikipedia API with CORS allowed via origin=*
   const url =
     "https://en.wikipedia.org/w/api.php?action=parse" +
     "&page=List_of_NCAA_Division_I_FBS_football_programs" +
@@ -397,29 +419,37 @@ async function loadFbsTeams(){
 
     const school = (cells[0].textContent || "").trim();
     const nick = (cells[1].textContent || "").trim();
-
     if (!school || !nick) continue;
 
-    // Build display name: "School Nickname"
-    teams.push(`${school} ${nick}`);
+    teams.push({
+      school,
+      nickname: nick,
+      display: `${school} ${nick}`
+    });
   }
 
-  // Deduplicate + sort
-  ALL_TEAMS = Array.from(new Set(teams)).sort((a,b)=>a.localeCompare(b));
+  // Deduplicate by display
+  const seen = new Set();
+  ALL_TEAMS = teams.filter(t => {
+    const key = t.display;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a,b)=>a.display.localeCompare(b.display));
+
   statusLine.textContent = `Loaded ${ALL_TEAMS.length} FBS teams.`;
 }
 
-/* Fallback if offline */
 function fallbackTeams(){
   ALL_TEAMS = [
-    "Ohio State Buckeyes",
-    "Michigan Wolverines",
-    "Miami (FL) Hurricanes",
-    "Oregon Ducks",
-    "Notre Dame Fighting Irish",
-    "Alabama Crimson Tide",
-    "Georgia Bulldogs",
-    "Texas Longhorns"
+    { school:"Ohio State", nickname:"Buckeyes", display:"Ohio State Buckeyes" },
+    { school:"Michigan", nickname:"Wolverines", display:"Michigan Wolverines" },
+    { school:"Michigan State", nickname:"Spartans", display:"Michigan State Spartans" },
+    { school:"Miami (FL)", nickname:"Hurricanes", display:"Miami (FL) Hurricanes" },
+    { school:"Oregon", nickname:"Ducks", display:"Oregon Ducks" },
+    { school:"Notre Dame", nickname:"Fighting Irish", display:"Notre Dame Fighting Irish" },
+    { school:"Alabama", nickname:"Crimson Tide", display:"Alabama Crimson Tide" },
+    { school:"Georgia", nickname:"Bulldogs", display:"Georgia Bulldogs" }
   ];
   statusLine.textContent = "Offline mode: using a small fallback list.";
 }
@@ -451,20 +481,20 @@ function showDropdown(items){
     dropdown.style.display = "none";
     return;
   }
-  for (const name of items){
+  for (const team of items){
     const div = document.createElement("div");
     div.className = "option";
     div.setAttribute("role","option");
     div.innerHTML = `
       <div class="optLeft">
-        <div class="optName">${name}</div>
-        <div class="optMeta">tap to select</div>
+        <div class="optName">${team.display}</div>
+        <div class="optMeta">${team.school}</div>
       </div>
       <div class="pill">select</div>
     `;
     div.addEventListener("mousedown", (e) => {
       e.preventDefault();
-      pickTeam(name);
+      pickTeam(team);
     });
     dropdown.appendChild(div);
   }
@@ -475,73 +505,54 @@ function hideDropdown(){ dropdown.style.display = "none"; }
 function getSuggestions(q){
   const query = (q || "").trim().toLowerCase();
   if (!query) return [];
-  const starts = ALL_TEAMS.filter(t => t.toLowerCase().startsWith(query));
-  const includes = ALL_TEAMS.filter(t => !starts.includes(t) && t.toLowerCase().includes(query));
+
+  const starts = ALL_TEAMS.filter(t => t.display.toLowerCase().startsWith(query));
+  const includes = ALL_TEAMS.filter(t => !starts.includes(t) && t.display.toLowerCase().includes(query));
   return [...starts, ...includes].slice(0, 10);
 }
 
-function splitSchool(displayName){
-  // displayName is "School Nickname"
-  // We'll match school by checking known school keys from LAST_TITLE_BY_SCHOOL
-  // Try exact prefix match for any champion school key.
-  const keys = Object.keys(LAST_TITLE_BY_SCHOOL).sort((a,b)=>b.length-a.length);
-  for (const k of keys){
-    if (displayName === k) return { school:k, nick:"" };
-    if (displayName.startsWith(k + " ")){
-      return { school:k, nick:displayName.slice(k.length+1) };
-    }
-  }
-  // If not a known champion key, school is everything before last word group isn't reliable,
-  // so we use the full displayName as "school display", and no title year.
-  return { school: displayName.replace(/\s+\S+$/,""), nick: displayName.split(" ").slice(-1).join(" ") };
-}
-
-function pickTeam(displayName){
+function pickTeam(teamObj){
   if (lockedIn) return;
   lockedIn = true;
-  lastSelection = displayName;
+  lastSelection = teamObj;
 
-  teamInput.value = displayName;
+  teamInput.value = teamObj.display;
   teamInput.classList.add("locked");
   teamInput.setAttribute("readonly","readonly");
   hideDropdown();
 
-  generateResult(displayName);
+  generateResult(teamObj);
 }
 
-function generateResult(displayName){
-  // Determine school key for championship map
-  const schoolKey = Object.keys(LAST_TITLE_BY_SCHOOL)
-    .find(k => displayName === k || displayName.startsWith(k + " "));
+function generateResult(teamObj){
+  const year = LAST_TITLE_BY_SCHOOL[teamObj.school] ?? null;
 
-  const year = schoolKey ? LAST_TITLE_BY_SCHOOL[schoolKey] : null;
+  rTeam.textContent = teamObj.display;
+  rYear.textContent = year ? String(year) : "Never won (in this game)";
 
-  rTeam.textContent = displayName;
-  rYear.textContent = year ? String(year) : "Never won (in this list)";
-
-  // If never won: transport mode
-  if (!year || typeof year !== "number"){
+  // If never won OR year is ancient enough -> transport
+  if (!year || typeof year !== "number" || tierIndexForYear(year) === -1){
     const mode = rand(TRANSPORT_MODES);
+    const why = (!year) ? "never won" : `last won in ${year} (ancient)`;
 
     headline.textContent = `You’re not driving. You’re ${mode.label}.`;
     rRide.textContent = mode.label;
     rPrice.textContent = mode.price === 0 ? "$0" : formatMoney(mode.price);
 
     tierDot.style.background = mode.dot;
-    tierText.textContent = "Tier: Never-won transportation";
+    tierText.textContent = "Tier: Not driving";
 
-    shareText.textContent = `${displayName}: never won a national title… so I’m ${mode.label}.`;
+    shareText.textContent = `${teamObj.display}: ${why}… so I’m ${mode.label}.`;
     result.style.display = "block";
     return;
   }
 
-  // Champs: tiered car
-  const tierIdx = tierIndexForYear(year);
-  const tier = TIERS[tierIdx];
-
+  // Champs -> tiered car
+  const tIdx = tierIndexForYear(year);
+  const tier = TIERS[tIdx];
   const picked = rand(tier.cars);
   const carText = buildCarText(year, picked);
-  const price = realisticPriceForYear(year, tierIdx);
+  const price = realisticPriceForYear(year, tIdx);
 
   headline.textContent = `You’re driving a ${carText}.`;
   rRide.textContent = carText;
@@ -550,7 +561,7 @@ function generateResult(displayName){
   tierDot.style.background = tier.dot;
   tierText.textContent = `Tier: ${tier.name}`;
 
-  shareText.textContent = `${displayName} last won it in ${year}. That means I’m driving a ${carText} (about ${formatMoney(price)} today).`;
+  shareText.textContent = `${teamObj.display} last won it in ${year}. That means I’m driving a ${carText} (about ${formatMoney(price)} today).`;
   result.style.display = "block";
 }
 
@@ -588,12 +599,10 @@ copyBtn.addEventListener("click", async () => {
     await navigator.clipboard.writeText(shareText.textContent || "");
     copyBtn.textContent = "Copied!";
     setTimeout(()=> copyBtn.textContent = "Copy", 900);
-  }catch{
-    // ignore
-  }
+  }catch{}
 });
 
-/* Load teams */
+/* Init */
 (async function init(){
   try{
     await loadFbsTeams();
