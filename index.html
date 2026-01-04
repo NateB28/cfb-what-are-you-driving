@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Based on your team’s last championship, what are you driving?</title>
+  <style>
+    :root{
+      --bg:#070A12;
+      --card:#0E1424;
+      --border:#213053;
+      --text:#EAF0FF;
+      --muted:#A8B4D6;
+      --accent:#7C4DFF;
+      --accent2:#4F7CFF;
+      --good:#37D67A;
+      --warn:#FFB020;
+      --bad:#FF5470;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      background:
+        radial-gradient(1000px 600px at 20% 10%, rgba(79,124,255,.22), transparent 60%),
+        radial-gradient(900px 500px at 90% 20%, rgba(124,77,255,.18), transparent 55%),
+        radial-gradient(900px 500px at 50% 110%, rgba(55,214,122,.10), transparent 55%),
+        var(--bg);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:26px 14px;
+    }
+    .wrap{width:min(920px, 100%);}
+    .header{display:flex; flex-direction:column; gap:10px; margin-bottom:14px;}
+    .title{font-size:26px; font-weight:950; letter-spacing:.2px; line-height:1.12;}
+    .subtitle{color:var(--muted); line-height:1.45; font-size:14px;}
+    .subtitle b{color:var(--text)}
+    .card{
+      border:1px solid rgba(33,48,83,.9);
+      background: linear-gradient(180deg, rgba(14,20,36,.92), rgba(10,14,25,.92));
+      border-radius:16px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.42);
+      overflow:hidden;
+    }
+    .topbar{
+      padding:14px 16px;
+      border-bottom:1px solid rgba(33,48,83,.7);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .badge{
+      font-size:12px;
+      color:var(--muted);
+      border:1px solid rgba(33,48,83,.9);
+      background: rgba(7,10,18,.55);
+      padding:7px 10px;
+      border-radius:999px;
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      user-select:none;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:999px;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      box-shadow: 0 0 0 3px rgba(79,124,255,.15);
+    }
+    .content{padding:16px;}
+    .field{position:relative; display:flex; flex-direction:column; gap:8px; margin-bottom:10px;}
+    label{font-size:12px;color:var(--muted)}
+    input{
+      width:100%;
+      padding:12px 12px;
+      border-radius:12px;
+      border:1px solid rgba(33,48,83,.95);
+      background: rgba(7,10,18,.55);
+      color: var(--text);
+      outline:none;
+      font-size:15px;
+    }
+    input:focus{
+      border-color: rgba(79,124,255,.95);
+      box-shadow: 0 0 0 4px rgba(79,124,255,.18);
+    }
+    .dropdown{
+      position:absolute;
+      left:0; right:0;
+      top: 72px;
+      background: rgba(10,14,25,.98);
+      border:1px solid rgba(33,48,83,.95);
+      border-radius:12px;
+      overflow:hidden;
+      display:none;
+      max-height: 280px;
+      z-index: 20;
+      box-shadow: 0 18px 50px rgba(0,0,0,.55);
+    }
+    .option{
+      padding:10px 12px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border-top:1px solid rgba(33,48,83,.45);
+    }
+    .option:first-child{border-top:none;}
+    .option:hover{background: rgba(79,124,255,.12);}
+    .optLeft{display:flex; flex-direction:column; gap:2px;}
+    .optName{font-weight:950;}
+    .optMeta{font-size:12px; color: var(--muted);}
+    .pill{
+      font-size:11px;
+      padding:6px 9px;
+      border-radius:999px;
+      border:1px solid rgba(33,48,83,.9);
+      color:var(--muted);
+      background: rgba(7,10,18,.45);
+      white-space:nowrap;
+    }
+    .btnRow{display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; align-items:stretch;}
+    button{
+      padding:10px 12px;
+      border-radius:12px;
+      border:none;
+      cursor:pointer;
+      font-weight:950;
+      color: white;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      box-shadow: 0 12px 26px rgba(79,124,255,.20);
+    }
+    button:hover{filter:brightness(1.06)}
+    .hint{
+      color: var(--muted);
+      font-size:12px;
+      margin-top:8px;
+      line-height:1.4;
+    }
+    .result{
+      margin-top:14px;
+      border:1px solid rgba(33,48,83,.9);
+      background: rgba(7,10,18,.45);
+      border-radius:14px;
+      padding:14px;
+      display:none;
+    }
+    .headline{font-size:18px; font-weight:950; letter-spacing:.2px; margin: 0 0 10px;}
+    .grid{display:grid; gap:10px; grid-template-columns: 1fr;}
+    @media (min-width:760px){ .grid{grid-template-columns: 1fr 1fr;} }
+    .kv{
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(33,48,83,.55);
+      background: rgba(14,20,36,.55);
+    }
+    .k{font-size:11px;color:var(--muted); margin-bottom:6px;}
+    .v{font-size:16px;font-weight:950;}
+    .tierBadge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid rgba(33,48,83,.8);
+      background: rgba(14,20,36,.55);
+      color: var(--muted);
+      font-size:12px;
+      margin-top:10px;
+    }
+    .tierDot{width:9px;height:9px;border-radius:999px;background: var(--muted);opacity:.95;}
+    .shareRow{display:flex; gap:10px; margin-top:10px; align-items:stretch; flex-wrap:wrap;}
+    .shareText{
+      flex: 1 1 320px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(33,48,83,.55);
+      background: rgba(14,20,36,.45);
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.35;
+      word-break:break-word;
+      user-select:text;
+    }
+    .copyBtn{background: linear-gradient(135deg, rgba(55,214,122,.95), rgba(79,124,255,.95));}
+    .statusLine{color:var(--muted); font-size:12px; margin-top:6px;}
+    .locked{
+      opacity:.55;
+      filter:saturate(.9);
+      cursor:not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="title">Based on your team’s last championship, what are you driving?</div>
+      <div class="subtitle">
+        <b>More recent = better.</b> Longer ago = worse… and if you’ve never won, you’re <b>not driving</b>.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="topbar">
+        <div class="badge"><span class="dot"></span> College Football (All FBS Teams)</div>
+        <div class="badge" title="No re-roll. Pick a team → you get what you get.">One Pick • No Re-roll</div>
+      </div>
+
+      <div class="content">
+        <div class="field">
+          <label for="teamInput">Team</label>
+          <input id="teamInput" placeholder="Start typing… (every FBS team)" autocomplete="off" />
+          <div id="dropdown" class="dropdown" role="listbox" aria-label="Team suggestions"></div>
+          <div id="statusLine" class="statusLine">Loading all FBS teams…</div>
+        </div>
+
+        <div class="btnRow">
+          <button id="resetBtn" type="button">Reset</button>
+        </div>
+
+        <div class="hint">
+          Champs get a vehicle based on how long ago they last won. Never-won teams get a transport method (walking/canoe/hitchhiking/etc.).
+        </div>
+
+        <div id="result" class="result">
+          <div id="headline" class="headline"></div>
+
+          <div class="grid">
+            <div class="kv">
+              <div class="k">Team</div>
+              <div id="rTeam" class="v"></div>
+            </div>
+            <div class="kv">
+              <div class="k">Last national title season</div>
+              <div id="rYear" class="v"></div>
+            </div>
+            <div class="kv">
+              <div class="k">Your ride / transport</div>
+              <div id="rRide" class="v"></div>
+            </div>
+            <div class="kv">
+              <div class="k">Estimated price today</div>
+              <div id="rPrice" class="v"></div>
+            </div>
+          </div>
+
+          <div class="tierBadge">
+            <span class="tierDot" id="tierDot"></span>
+            <span id="tierText">—</span>
+          </div>
+
+          <div class="shareRow">
+            <div id="shareText" class="shareText"></div>
+            <button id="copyBtn" class="copyBtn" type="button">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================================================
+   1) All FBS teams: loaded live from Wikipedia (stays current)
+   2) Last title year map: winners only; everyone else => never-won
+      (You can expand this list anytime.)
+   ========================================================= */
+
+// Winners only. Everyone else automatically becomes "never won".
+const LAST_TITLE_BY_SCHOOL = {
+  // Modern era highlights (includes historic winners you’ll recognize)
+  "Alabama": 2020,
+  "Clemson": 2018,
+  "Georgia": 2022,
+  "LSU": 2019,
+  "Michigan": 2023,
+  "Ohio State": 2024,
+  "Florida State": 2013,
+  "Florida": 2008,
+  "Auburn": 2010,
+  "Texas": 2005,
+  "USC": 2004,
+  "Miami (FL)": 2001,
+  "Oklahoma": 2000,
+  "Tennessee": 1998,
+  "Nebraska": 1997,
+  "Washington": 1991,
+  "Colorado": 1990,
+  "Georgia Tech": 1990,
+  "Notre Dame": 1988,
+  "Penn State": 1986,
+  "BYU": 1984,
+
+  // Add more historic champs if you want them to get cars instead of “canoe”.
+  // Example:
+  // "Pittsburgh": 1976,
+  // "Army": 1946,
+  // "Minnesota": 1960
+};
+
+const REFERENCE_YEAR = 2024; // keep it consistent with your “car model year = last champ year” idea
+
+/* =========================================================
+   Tiering: 10-year steps
+   Champs -> car tier; Never-won -> transport mode
+   ========================================================= */
+const TIERS = [
+  { name:"High Class", dot:"linear-gradient(135deg, rgba(55,214,122,.95), rgba(79,124,255,.95))",
+    cars:["Mercedes-Benz G-Class","Porsche 911","Range Rover","BMW X5","Tesla Model S","Cadillac Escalade","Audi RS5","Lexus GX"]},
+  { name:"Nice", dot:"linear-gradient(135deg, rgba(79,124,255,.95), rgba(124,77,255,.95))",
+    cars:["Ford Bronco","Jeep Wrangler","Toyota 4Runner","Honda Accord","Toyota Camry","Ford Mustang","Chevy Tahoe","GMC Sierra"]},
+  { name:"Decent", dot:"linear-gradient(135deg, rgba(168,180,214,.95), rgba(79,124,255,.55))",
+    cars:["Honda Civic","Toyota Corolla","Nissan Altima","Ford Explorer","Chevy Impala","Jeep Cherokee","Ford Taurus","Subaru Outback"]},
+  { name:"Rough", dot:"linear-gradient(135deg, rgba(255,176,32,.95), rgba(168,180,214,.55))",
+    cars:["a sun-faded minivan","a squeaky sedan","a dented hatchback","a rusty pickup","a ‘runs most days’ coupe","a loud muffler special","a tired station wagon","a dashboard-light festival"]},
+  { name:"Beater", dot:"linear-gradient(135deg, rgba(255,84,112,.95), rgba(255,176,32,.75))",
+    cars:["a clunker that needs a jump","a ‘starts on the second try’ special","a car with one working window","a backseat full of tools","a mystery rattle machine","a tape-deck legend","a ‘my buddy can fix it’ ride","a permanent donut spare tire"]}
+];
+
+const TRANSPORT_MODES = [
+  { label:"walking 🚶", price:0, dot:"linear-gradient(135deg, rgba(255,84,112,.95), rgba(255,176,32,.75))" },
+  { label:"a bus pass 🚌", price:2.50, dot:"linear-gradient(135deg, rgba(255,176,32,.95), rgba(168,180,214,.55))" },
+  { label:"hitchhiking 👍", price:0, dot:"linear-gradient(135deg, rgba(168,180,214,.95), rgba(79,124,255,.55))" },
+  { label:"canoeing 🛶", price:180, dot:"linear-gradient(135deg, rgba(79,124,255,.95), rgba(124,77,255,.95))" },
+  { label:"a skateboard 🛹", price:90, dot:"linear-gradient(135deg, rgba(55,214,122,.60), rgba(79,124,255,.60))" },
+  { label:"a borrowed bicycle 🚲", price:0, dot:"linear-gradient(135deg, rgba(79,124,255,.55), rgba(168,180,214,.55))" }
+];
+
+function rand(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
+function formatMoney(n){
+  if (n === 0) return "$0";
+  return n.toLocaleString("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});
+}
+function getAge(year){ return Math.max(0, REFERENCE_YEAR - year); }
+function tierIndexForYear(year){ return Math.min(4, Math.floor(getAge(year)/10)); }
+function buildCarText(year, picked){
+  if (picked.startsWith("a ") || picked.startsWith("an ")) return picked;
+  return `${year} ${picked}`;
+}
+
+/* =========================================================
+   Realistic-ish price model: depreciation curve
+   ========================================================= */
+const BASE_NEW_PRICE = 72000;        // anchor for modern nice ride
+const DEPRECIATION_PER_YEAR = 0.085; // 8.5% per year
+const MIN_CAR_PRICE = 800;
+
+function realisticPriceForYear(year, tierIdx){
+  const age = getAge(year);
+  let price = BASE_NEW_PRICE * Math.pow((1 - DEPRECIATION_PER_YEAR), age);
+
+  // Condition/tier multipliers
+  const tierMultiplier = [1.15, 1.00, 0.85, 0.65, 0.45][tierIdx] ?? 0.7;
+  price *= tierMultiplier;
+
+  // Tiny variance ±6%
+  const trim = 1 + ((Math.random()*0.12) - 0.06);
+  price *= trim;
+
+  return Math.max(MIN_CAR_PRICE, Math.round(price));
+}
+
+/* =========================================================
+   Load ALL FBS teams (School + Nickname) from Wikipedia API
+   ========================================================= */
+const statusLine = document.getElementById("statusLine");
+let ALL_TEAMS = []; // strings like "Miami (FL) Hurricanes"
+
+async function loadFbsTeams(){
+  // Wikipedia API with CORS allowed via origin=*
+  const url =
+    "https://en.wikipedia.org/w/api.php?action=parse" +
+    "&page=List_of_NCAA_Division_I_FBS_football_programs" +
+    "&prop=text&format=json&origin=*";
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Team list fetch failed");
+  const data = await res.json();
+  const html = data?.parse?.text?.["*"];
+  if (!html) throw new Error("No HTML from API");
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const table = doc.querySelector("table.wikitable");
+  if (!table) throw new Error("Could not find FBS table");
+
+  const rows = Array.from(table.querySelectorAll("tr")).slice(1);
+  const teams = [];
+
+  for (const row of rows){
+    const cells = row.querySelectorAll("td");
+    if (!cells || cells.length < 2) continue;
+
+    const school = (cells[0].textContent || "").trim();
+    const nick = (cells[1].textContent || "").trim();
+
+    if (!school || !nick) continue;
+
+    // Build display name: "School Nickname"
+    teams.push(`${school} ${nick}`);
+  }
+
+  // Deduplicate + sort
+  ALL_TEAMS = Array.from(new Set(teams)).sort((a,b)=>a.localeCompare(b));
+  statusLine.textContent = `Loaded ${ALL_TEAMS.length} FBS teams.`;
+}
+
+/* Fallback if offline */
+function fallbackTeams(){
+  ALL_TEAMS = [
+    "Ohio State Buckeyes",
+    "Michigan Wolverines",
+    "Miami (FL) Hurricanes",
+    "Oregon Ducks",
+    "Notre Dame Fighting Irish",
+    "Alabama Crimson Tide",
+    "Georgia Bulldogs",
+    "Texas Longhorns"
+  ];
+  statusLine.textContent = "Offline mode: using a small fallback list.";
+}
+
+/* =========================================================
+   Autocomplete + one-pick logic (NO re-roll)
+   ========================================================= */
+const teamInput = document.getElementById("teamInput");
+const dropdown = document.getElementById("dropdown");
+const resetBtn = document.getElementById("resetBtn");
+
+const result = document.getElementById("result");
+const headline = document.getElementById("headline");
+const rTeam = document.getElementById("rTeam");
+const rYear = document.getElementById("rYear");
+const rRide = document.getElementById("rRide");
+const rPrice = document.getElementById("rPrice");
+const tierDot = document.getElementById("tierDot");
+const tierText = document.getElementById("tierText");
+const shareText = document.getElementById("shareText");
+const copyBtn = document.getElementById("copyBtn");
+
+let lockedIn = false;
+let lastSelection = null;
+
+function showDropdown(items){
+  dropdown.innerHTML = "";
+  if (!items.length || lockedIn){
+    dropdown.style.display = "none";
+    return;
+  }
+  for (const name of items){
+    const div = document.createElement("div");
+    div.className = "option";
+    div.setAttribute("role","option");
+    div.innerHTML = `
+      <div class="optLeft">
+        <div class="optName">${name}</div>
+        <div class="optMeta">tap to select</div>
+      </div>
+      <div class="pill">select</div>
+    `;
+    div.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      pickTeam(name);
+    });
+    dropdown.appendChild(div);
+  }
+  dropdown.style.display = "block";
+}
+function hideDropdown(){ dropdown.style.display = "none"; }
+
+function getSuggestions(q){
+  const query = (q || "").trim().toLowerCase();
+  if (!query) return [];
+  const starts = ALL_TEAMS.filter(t => t.toLowerCase().startsWith(query));
+  const includes = ALL_TEAMS.filter(t => !starts.includes(t) && t.toLowerCase().includes(query));
+  return [...starts, ...includes].slice(0, 10);
+}
+
+function splitSchool(displayName){
+  // displayName is "School Nickname"
+  // We'll match school by checking known school keys from LAST_TITLE_BY_SCHOOL
+  // Try exact prefix match for any champion school key.
+  const keys = Object.keys(LAST_TITLE_BY_SCHOOL).sort((a,b)=>b.length-a.length);
+  for (const k of keys){
+    if (displayName === k) return { school:k, nick:"" };
+    if (displayName.startsWith(k + " ")){
+      return { school:k, nick:displayName.slice(k.length+1) };
+    }
+  }
+  // If not a known champion key, school is everything before last word group isn't reliable,
+  // so we use the full displayName as "school display", and no title year.
+  return { school: displayName.replace(/\s+\S+$/,""), nick: displayName.split(" ").slice(-1).join(" ") };
+}
+
+function pickTeam(displayName){
+  if (lockedIn) return;
+  lockedIn = true;
+  lastSelection = displayName;
+
+  teamInput.value = displayName;
+  teamInput.classList.add("locked");
+  teamInput.setAttribute("readonly","readonly");
+  hideDropdown();
+
+  generateResult(displayName);
+}
+
+function generateResult(displayName){
+  // Determine school key for championship map
+  const schoolKey = Object.keys(LAST_TITLE_BY_SCHOOL)
+    .find(k => displayName === k || displayName.startsWith(k + " "));
+
+  const year = schoolKey ? LAST_TITLE_BY_SCHOOL[schoolKey] : null;
+
+  rTeam.textContent = displayName;
+  rYear.textContent = year ? String(year) : "Never won (in this list)";
+
+  // If never won: transport mode
+  if (!year || typeof year !== "number"){
+    const mode = rand(TRANSPORT_MODES);
+
+    headline.textContent = `You’re not driving. You’re ${mode.label}.`;
+    rRide.textContent = mode.label;
+    rPrice.textContent = mode.price === 0 ? "$0" : formatMoney(mode.price);
+
+    tierDot.style.background = mode.dot;
+    tierText.textContent = "Tier: Never-won transportation";
+
+    shareText.textContent = `${displayName}: never won a national title… so I’m ${mode.label}.`;
+    result.style.display = "block";
+    return;
+  }
+
+  // Champs: tiered car
+  const tierIdx = tierIndexForYear(year);
+  const tier = TIERS[tierIdx];
+
+  const picked = rand(tier.cars);
+  const carText = buildCarText(year, picked);
+  const price = realisticPriceForYear(year, tierIdx);
+
+  headline.textContent = `You’re driving a ${carText}.`;
+  rRide.textContent = carText;
+  rPrice.textContent = formatMoney(price);
+
+  tierDot.style.background = tier.dot;
+  tierText.textContent = `Tier: ${tier.name}`;
+
+  shareText.textContent = `${displayName} last won it in ${year}. That means I’m driving a ${carText} (about ${formatMoney(price)} today).`;
+  result.style.display = "block";
+}
+
+function resetAll(){
+  lockedIn = false;
+  lastSelection = null;
+
+  teamInput.value = "";
+  teamInput.classList.remove("locked");
+  teamInput.removeAttribute("readonly");
+
+  hideDropdown();
+  result.style.display = "none";
+  headline.textContent = "";
+  shareText.textContent = "";
+  teamInput.focus();
+}
+
+/* Events */
+teamInput.addEventListener("input", () => showDropdown(getSuggestions(teamInput.value)));
+teamInput.addEventListener("focus", () => showDropdown(getSuggestions(teamInput.value)));
+teamInput.addEventListener("blur", () => setTimeout(hideDropdown, 120));
+teamInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter"){
+    e.preventDefault();
+    const sugg = getSuggestions(teamInput.value);
+    if (sugg.length && !lockedIn) pickTeam(sugg[0]);
+  }
+});
+
+resetBtn.addEventListener("click", resetAll);
+
+copyBtn.addEventListener("click", async () => {
+  try{
+    await navigator.clipboard.writeText(shareText.textContent || "");
+    copyBtn.textContent = "Copied!";
+    setTimeout(()=> copyBtn.textContent = "Copy", 900);
+  }catch{
+    // ignore
+  }
+});
+
+/* Load teams */
+(async function init(){
+  try{
+    await loadFbsTeams();
+  }catch(e){
+    fallbackTeams();
+  }
+})();
+</script>
+</body>
+</html>
